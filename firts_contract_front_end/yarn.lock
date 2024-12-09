@@ -634,6 +634,18 @@
     solid-styled-components "^0.28.5"
     solid-transition-group "^0.0.12"
 
+"@twa-dev/sdk@^8.0.1":
+  version "8.0.1"
+  resolved "https://registry.yarnpkg.com/@twa-dev/sdk/-/sdk-8.0.1.tgz#c34119c0822a2b5583a201ccd1e755efe39b55e1"
+  integrity sha512-mBR5dnAvSyRx7YGt/n0Owq1z8MsWhsuh76JD1abV0TZWHi6RQSPXBNAG0XMOMO7Vf5hsAwUTul+x54vf43Ku0A==
+  dependencies:
+    "@twa-dev/types" "^8.0.1"
+
+"@twa-dev/types@^8.0.1":
+  version "8.0.1"
+  resolved "https://registry.yarnpkg.com/@twa-dev/types/-/types-8.0.1.tgz#6a9d08b97f0acfa1bf00e0bc9083253eddb1a236"
+  integrity sha512-/m3KiULhI4fdeoI5K9Op9jFbmdPjxaAdrZBJ3BA1fS4lVmKCx9XuLTeumzYeuOW577eHAJWaZkcSpWBOss4Epw==
+
 "@types/estree@1.0.6", "@types/estree@^1.0.0", "@types/estree@^1.0.6":
   version "1.0.6"
   resolved "https://registry.yarnpkg.com/@types/estree/-/estree-1.0.6.tgz#628effeeae2064a1b4e79f78e81d87b7e5fc7b50"
