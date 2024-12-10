@@ -1,69 +1,100 @@
 #include "imports/stdlib.fc";
 
-
+;; Constant defining the minimum TONs required to keep the contract from being deleted
 const const::min_tons_for_storage = 10000000; ;; 0.01 TON
 
+;; Function to load stored data from the contract
 (int, slice, slice) load_data() inline {
+  ;; Retrieve the data cell and prepare for parsing
   var ds = get_data().begin_parse();
+
+  ;; Return the stored values: counter, most recent sender, and owner's address
   return (
-  	ds~load_uint(32), ;; counter_value
-   	ds~load_msg_addr(), ;; the most recent sender
-    	ds~load_msg_addr() ;; owner_address
+    ds~load_uint(32), ;; Counter value
+    ds~load_msg_addr(), ;; Address of the most recent sender
+    ds~load_msg_addr() ;; Owner's address
   );
 }
 
+;; Function to save data into the contract
 () save_data(int counter_value, slice recent_sender, slice owner_address) impure inline {
+  ;; Create a new cell with the values to be stored
   set_data(begin_cell()
-    .store_uint(counter_value, 32) ;; counter_value
-    .store_slice(recent_sender) ;; the most recent sender
-    .store_slice(owner_address) ;; owner_address
-    .end_cell());
+    .store_uint(counter_value, 32) ;; Store the counter value
+    .store_slice(recent_sender) ;; Store the most recent sender's address
+    .store_slice(owner_address) ;; Store the owner's address
+    .end_cell()); ;; Finalize the cell and save the data
 }
-;; //Función principal que maneja los mensajes entrantes
+
+;; Main function to handle incoming internal messages
 () recv_internal(int msg_value, cell in_msg, slice in_msg_body) impure {
-    ;;// Parsear el mensaje entrante
+    ;; Prepare to parse the received message
     slice cs = in_msg.begin_parse();
-    int flags = cs~load_uint(4);  ;;//4 bits (usualmente flags)Cargar los primeros
-    slice sender_address = cs~load_msg_addr(); ;;// Obtener la dirección del remitente
 
-  int op = in_msg_body~load_uint(32);	
+    ;; Read the first 4 bits as flags
+    int flags = cs~load_uint(4); 
 
-  var (counter_value, recent_sender, owner_address) = load_data();
-  if (op == 1) {
-    save_data(counter_value + 1, sender_address, owner_address);
-	return();
-  }
+    ;; Retrieve the sender's address from the message
+    slice sender_address = cs~load_msg_addr();
 
-  if (op == 2) {
-    return();
-  }
+    ;; Read the operation code (op) from the message body
+    int op = in_msg_body~load_uint(32);	
 
-  if (op == 3) {
-    throw_unless(103, equal_slice_bits(sender_address, owner_address));
+    ;; Load the current contract data
+    var (counter_value, recent_sender, owner_address) = load_data();
 
-    int withdraw_amount = in_msg_body~load_coins();
-    var [balance, _] = get_balance();
-    throw_unless(104, balance >= withdraw_amount);
+    ;; Operation 1: Increment the counter
+    if (op == 1) {
+        ;; Increment the counter value and save the updated data
+        save_data(counter_value + 1, sender_address, owner_address);
+        return();
+    }
 
-    int return_value = min(withdraw_amount, balance - const::min_tons_for_storage);
+    ;; Operación 2: Do nothing
+    if (op == 2) {
+        return(); ;; Exit without making changes
+    }
 
-    int msg_mode = 1; ;; 0 (Ordinary message) + 1 (Pay transfer fees separately from the message value)
-    
-    var msg = begin_cell()
-        .store_uint(0x18, 6)
-        .store_slice(sender_address)
-        .store_coins(return_value)
-        .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1);
-    ;; TODO: Sending internal message with funds
-    send_raw_message(msg.end_cell(), msg_mode);
-    
-    return();
-  }
+    ;; Operación 3: Withdraw funds
+    if (op == 3) {
+        ;; Ensure the sender is the contract's owner
+        throw_unless(103, equal_slice_bits(sender_address, owner_address));
 
-  throw(777);
+        ;; Read the withdrawal amount from the message body
+        int withdraw_amount = in_msg_body~load_coins();
+
+        ;; Retrieve the current contract balance
+        var [balance, _] = get_balance();
+
+        ;; Ensure sufficient funds are available for the withdrawal
+        throw_unless(104, balance >= withdraw_amount);
+
+        ;; Calculate the return amount, ensuring the minimum balance is retained
+        int return_value = min(withdraw_amount, balance - const::min_tons_for_storage);
+
+        ;; Message mode: 1 = separate transfer fees from the message value
+        int msg_mode = 1; 
+        
+        ;; Create an internal message to transfer the funds
+        var msg = begin_cell()
+            .store_uint(0x18, 6) ;; Special code for internal transfera
+            .store_slice(sender_address) ;; Sender's address
+            .store_coins(return_value) ;; Amount to transfer
+            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1); ;; Flags and reserved space
+
+        ;;  Send the internal message
+        send_raw_message(msg.end_cell(), msg_mode);
+
+        return(); ;; Exit after the transfer
+    }
+
+    ;; Throw an exception if the operation is not recognized
+    throw(777);
 }
 
+;; Function to retrieve contract storage data
 (int, slice, slice) get_contract_storage_data() method_id {
+  ;; Load and return the stored values: counter, most recent sender, and owner
   var (counter_value, recent_sender, owner_address) = load_data();
   return (
     counter_value,
@@ -72,7 +103,9 @@ const const::min_tons_for_storage = 10000000; ;; 0.01 TON
   );
 }
 
+;; Function to get the contract's current balance
 int balance() method_id {
+  ;; Retrieve and return the current balance of the contract
   var [balance, _] = get_balance();
   return balance;
 }
